@@ -62,7 +62,7 @@
 		
 		<script type="text/javascript" src="donnees/POI.js"></script>
 		<script type="text/javascript" src="donnees/fond.js"></script>
-		
+		<script type="text/javascript" src="donnees/rivieres.js"></script>
 		
 		
 		
@@ -90,7 +90,7 @@
 				}
 			}
 		}
-			
+	
 		function initialize() {
 		
 		/************************************************************************************************************************/
@@ -122,59 +122,7 @@
 				position: 'bottomright',
 				imperial: false
 			}));	
-			L.Control.CustomFuseSearch = L.Control.FuseSearch.extend({
-				
-				// Surcharge de la méthode createResultItem de FuseSearch
-				createResultItem: function(props, container, popup) {
-					var _this = this;
-					var feature = props._feature;
-					// Create a container and open the associated popup on click
-					var resultItem = L.DomUtil.create('p', 'result-item', container);
-
-					if (undefined !== popup) {
-						L.DomUtil.addClass(resultItem, 'clickable');
-						resultItem.onclick = function() {
-							if (window.matchMedia("(max-width:480px)").matches) {
-								_this.hidePanel();
-								feature.layer.openPopup();
-							} else {
-								_this._panAndPopup(feature, popup);
-							}
-						};
-
-					} else {
-						// Personnalisation de la méthode `createResultItem()`
-						L.DomUtil.addClass(resultItem, 'clickable');
-						resultItem.onclick = function() {
-							var longitude = feature.geometry.coordinates[0];
-							var latitude = feature.geometry.coordinates[1];
-							map.flyTo([latitude, longitude], 18);
-						};
-						// Fin de la personnalisation
-					}
-
-					// Fill in the container with the user-supplied function if any,
-					// otherwise display the feature properties used for the search.
-					if (null !== this.options.showResultFct) {
-						this.options.showResultFct(feature, resultItem);
-					} else {
-						str = '<b>' + props[this._keys[0]] + '</b>';
-						for (var i = 1; i < this._keys.length; i++) {
-							str += '<br/>' + props[this._keys[i]];
-						}
-						resultItem.innerHTML = str;
-					};
-
-					return resultItem;
-				},
-			});
-
-			// controle Fuzzy search en utilisant la version personnalisée de FuseSearch
-			var searchCtrl = new L.Control.CustomFuseSearch({});
-			searchCtrl.addTo(map);
-
-			// https://github.com/naomap/leaflet-fusesearch#usage
-        	searchCtrl.indexFeatures(poi, ["nom","commune"]);
+	
 //*******************ajout couche perimetre OTPH***************************************************************			
 
 				// Set up styles for subway lines
@@ -196,7 +144,52 @@
 			
 			
 			//  fin couche  -----------------------------------------------
-						
+	// debut sentiers PDIPR ----------------------------------------
+				// contenu popup sentiers PDIPR
+				function onEachFeature2(feature, layer) {
+				var popupContent = "";
+				if (feature.properties && feature.properties.nom) {
+					popupContent += '<b><font size="4pt"><center>'+feature.properties.nom+'</center></font></b><br></h6>';
+					
+					if (feature.properties && feature.properties.photo) {
+						popupContent += '<a class="example-image-link" href ="'+feature.properties.photo+'"data-lightbox="example-1"><img style="max-height: 100px;float:right; max-width:290px !important;"src ='+feature.properties.photo+'></a></b>';
+					}
+					if (feature.properties && feature.properties.descriptif) {
+						popupContent += feature.properties.descriptif+' </p><br>';
+					}
+					if (feature.web && feature.properties.web) {
+						popupContent += '<b>Trace GPS :</b> <a target="_blank" href='+feature.properties.trace_gps+'> fichier GPX à télécharger </a><br>';
+					}
+					if (feature.properties && feature.properties.site_web) {
+						popupContent += '<b>Plus d\'infos :</b> <a target="_blank" href="'+feature.properties.site_web+'"> cliquer ici</a><br>';
+					}
+					
+					if (feature.properties && feature.properties.source) {
+						popupContent += '<b>Source des données :</b> '+feature.properties.source+'<br>';
+					}
+				}
+				layer.bindPopup(popupContent);
+			}
+			
+				// Crée un style ( une couleur différente pour chacun) pour les sentiers
+				// Set up styles for subway lines
+			function sentierStyle(feature) {
+				return {
+					
+					"size":15,
+					"weight": 4,
+					"opacity": 1,
+					"fillOpacity": 0,
+					"clickable": true
+				};
+			}          
+							
+				//ajout sentiers PDIPR
+			var sentiers_pdipr = L.geoJson(rivieres_opth,{
+				style: sentierStyle, 
+				onEachFeature: onEachFeature2
+			}).addTo(map);
+									
 
 //*****************CREATION DES PICTOS************************
 			function categorieToPicto(categorie) {
@@ -263,7 +256,13 @@
 						
 	
 				}
-				
+				if (currentFeature.properties.photo2 != null && currentFeature.properties.photo2 != "") { // si l'entité courante contient un lien ou plusieurs liens vers des photos
+					var photos2 = currentFeature.properties.photo2; // On récupère les photos dans une variable
+					var tabPhotos2 = photos2.split(";");
+					popupContent += '</br><a class="example-image-link" href ="'+currentFeature.properties.photo2+'"data-lightbox="example-1"><img style="max-height: 100px;float; max-width:290px !important;" src="'+tabPhotos2[0]+'"></a>';
+						
+	
+				}
 				if ((currentFeature.properties.descriptif != null) && (currentFeature.properties.descriptif != "")) // si l'entité courante a un descriptif non vide
 					popupContent += '<text-align="justify">'+currentFeature.properties.descriptif+'<br><br>'; // on ajoute ce descriptif au contenu de la popup
 	
@@ -279,6 +278,9 @@
 
 				if ((currentFeature.properties.site_web != null) && (currentFeature.properties.site_web != "")) // si l'entité courante a un lien
 					popupContent += '<b>Plus d\'infos : </b><a target="_blank" href="'+currentFeature.properties.site_web+'"><i><u>cliquer ici</i></u></a><br>'; // on ajoute ce lien au contenu de la popup
+					if ((currentFeature.properties.site_web2 != null) && (currentFeature.properties.site_web2 != "")) // si l'entité courante a un lien
+					popupContent += '<b>Site Pierres d\'Histoire : </b><a target="_blank" href="'+currentFeature.properties.site_web2+'"><i><u>cliquer ici</i></u></a><br>'; // on ajoute ce lien au contenu de la popup
+				
 				// dans le tableau poiLayers, on affecte au marker de l'entité correspondante une popup dont le contenu vient d'être défini
 				
 				if ((currentFeature.properties.accessibilité != "Non"))
